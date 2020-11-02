@@ -1,0 +1,46 @@
+body {
+	/* rules applies to transition-in; make this for dark-to-bright */
+	/* more important from dark to bright to slow down and
+	   give eyes time to prevent overexposure */
+	transition: color 1s ease-in-out 1s,
+		/* majority of color changes here; be slower */
+		background-color 2s linear;
+}
+body.sc-colors-dark {
+	color: #CCC;
+	background-color: #333;
+	/* not as important transitioning to dark */
+	transition: color 0.5s ease-in-out,
+		background-color 0.5s ease-in-out;
+}
+
+body #maincontent .alert-message {
+	transition: color 1s ease-out,
+		background 1s ease-in,
+		background-color 1s ease-in,
+		background-image 1s ease-in;
+}
+body.sc-colors-dark #maincontent .alert-message {
+	background-color: rgb(70, 70, 30);
+	background-color: rgba(70, 70, 30, 20);
+	background-image: linear-gradient(to bottom, rgba(100, 100, 50, 30), transparent);
+	color: #CCC;
+}
+
+.label.sc-dark-mode-off {
+	color: #222!important;
+	background-color: #CCC!important;
+}
+.label.sc-dark-mode-on {
+	color: #CCC!important;
+	background-color: #333!important;
+}
+body.sc-colors-dark .label.sc-dark-mode-off {
+	display: none;
+}
+body:not(.sc-colors-dark) .label.sc-dark-mode-on {
+	display: none;
+}
+body.sc-colors-light .label.sc-dark-mode-on {
+	display: none;
+}

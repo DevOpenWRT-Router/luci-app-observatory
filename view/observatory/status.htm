@@ -1,0 +1,169 @@
+<%
+-- Copycenter 2020 Serena's Copycat
+-- License: CC0
+-- Included header adapted from OpenWRT 19 Bootstrap theme header
+-%>
+<%
+-- Directly include header instead of using theme header because 
+-- Bootstrap theme shows information which is geared towards admins and
+-- doesn't concern indirect users (e.g. full menu, version information).
+-- However, tries to use styles of the theme to be more consistent 
+-- with the rest of LuCI, at the cost of this possibly breaking
+-- in the future or with the use of a different theme.
+-- Could probably be solved by using a non-admin header,
+-- but rather unlikely to be implemented given LuCI2 and
+-- a general lack of publicly available pages.
+-%>
+<%
+	local http = require("luci.http");
+	local disp = require("luci.dispatcher");
+
+	local node = disp.context.dispatched;
+
+	-- send as HTML5
+	http.prepare_content("text/html")
+-%>
+<!DOCTYPE html>
+<html lang="<%=luci.i18n.context.lang%>">
+	<head>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=400, minimum-scale=0.5, initial-scale=0.86, maximum-scale=2">
+		<title><%=striptags(((node and node.title) and translate(node.title) or '')) %></title>
+		<link rel="stylesheet" href="<%=media%>/cascade.css">
+		<link rel="stylesheet" href="<%=resource%>/observatory/dark.css">
+		<link rel="shortcut icon" href="<%=media%>/favicon.png">
+		<% if node and node.css then %>
+			<link rel="stylesheet" href="<%=resource%>/<%=node.css%>">
+		<% end -%>
+		<% if css then %>
+			<style title="text/css"><%= css %></style>
+		<% end -%>
+		<script src="<%=url('admin/translations', luci.i18n.context.lang)%>?v=git-20.029.45734-adbbd5c"></script>
+		<script src="<%=resource%>/observatory/polyfill.js"></script>
+		<script src="<%=resource%>/observatory/ridr.js"></script>
+		<script src="<%=resource%>/observatory/dark.js"></script>
+		<script src="<%=resource%>/observatory/status.js"></script>
+		<script src="<%=resource%>/observatory/section_wan.js"></script>
+		<script type="text/javascript">//<![CDATA[
+/* @license magnet:?xt=urn:btih:90dc5c0be029de84e523b9b3922520e79e0e6f08&dn=cc0.txt CC0-1.0 */
+(function () {
+<%	function extractMenuData()
+		local ctx = disp.context;
+		-- only show menu requiring authentication when already authenticated
+		local isAuth = ctx.authsession and true;
+		local req = ctx.request;
+		local reqEndIdx = #req;
+		local extractNode, extractChildNodes;
+		function extractNode(name, node, reqPathIdx)
+			return { title = translate(node.title), name = name, urlQuery = node.query,
+				current = reqEndIdx == reqPathIdx or nil,
+				nodes = extractChildNodes(node, reqPathIdx) };
+		end
+		function extractChildNodes(node, reqPathIdx)
+			if not node.leaf then
+				local childNames, reqChildNode = disp.node_childs(node);
+				if reqPathIdx then
+					reqPathIdx = reqPathIdx + 1;
+					if reqPathIdx <= reqEndIdx then
+						reqChildNode = node.nodes[req[reqPathIdx]];
+					end
+				end
+				if 0 < #childNames then
+					local result = {};
+					for _, childName in ipairs(childNames) do
+						local childNode = node.nodes[childName];
+						if disp.node_visible(childNode) and (isAuth or not childNode.sysAuth) then
+							table.insert(result, extractNode(childName, childNode, reqChildNode == childNode and reqPathIdx));
+						end
+					end
+					return result;
+				end
+			end
+		end
+		local catName = ctx.path[1];
+		local catTree = catName and disp.node(catName);
+		local result = extractNode(catName, catTree, catName == ctx.request[1] and 1);
+		-- path to LuCI root
+		result.subroot = http.getenv("SCRIPT_NAME");
+		return result;
+	end
+%>	var _onsetup = (Array.isArray(OBSERVATORY._menu) && OBSERVATORY._menu) || [];
+	OBSERVATORY._menu = <%= require("luci.jsonc").stringify(extractMenuData()) %>;
+	_onsetup.forEach(function (callbackItem) {
+		callbackItem();
+	});
+})();
+/* @license-end */ //]]></script>
+		<script type="text/javascript">//<![CDATA[
+/* @license magnet:?xt=urn:btih:90dc5c0be029de84e523b9b3922520e79e0e6f08&dn=cc0.txt CC0-1.0 */
+(function () {
+	var _onsetup = (Array.isArray(OBSERVATORY._config) && OBSERVATORY._config) || [];
+	OBSERVATORY._config = {
+		dataURL: {
+			WAN: '<%-=build_url("observatory/status/data/wan")-%>'
+		},
+		i18n: {
+			WAN_LINK: '<%-:WAN-%>',
+			WAN_INTERFACE: '<%-:Interface-%>',
+			WAN_REFRESH_3S: '<%-:3s-%>',
+			WAN_REFRESH_5S: '<%-:5s-%>',
+			WAN_REFRESH_10S: '<%-:10s-%>',
+			WAN_FUZZY: '<%-:Fuzzy Range-%>',
+			WAN_UP: '<%-:Outbound-%>',
+			WAN_DOWN: '<%-:Inbound-%>',
+			WAN_PACKET: '<%-:Packets-%>',
+			WAN_BYTE: '<%-:Bytes-%>',
+			WAN_TOTAL: '<%-:Total-%>',
+			WAN_CHANGE: '<%-:Change-%>',
+			WAN_RATE: '<%-:Rate-%>',
+			WAN_RANGE: '<%-:Rate Range-%>'
+		},
+		available: true
+	};
+	_onsetup.forEach(function (callbackItem) {
+		callbackItem();
+	});
+})();
+/* @license-end */ //]]></script>
+		<script type="text/javascript">//<![CDATA[
+/* @license magnet:?xt=urn:btih:90dc5c0be029de84e523b9b3922520e79e0e6f08&dn=cc0.txt CC0-1.0 */
+<% -- can't assign CC0 license to the page to have the code in the tag itself
+   -- without an external page to indicate the license of this page
+   -- @licstart/@licend only works for certain licenses like GPL (with fixed text)
+%>	OBSERVATORY._common.js.dom.events.onLoad(function () {
+		document.getElementById("xhr_poll_status").onclick = function () {
+			RIDR.schedule.toggleRun();
+		};
+	});
+/* @license-end */ //]]></script>
+	</head>
+
+	<body class="lang_<%=luci.i18n.context.lang%> <% if node then %><%= striptags( node.title ) %><%- end %> sc-colors-dark" data-page="<%= table.concat(disp.context.requestpath, "-") %>">
+		<header>
+			<div class="fill">
+				<div class="container">
+					<a class="brand" href="#"><%= http.getenv("HTTP_HOST") %></a>
+					<div id="menu"></div>
+					<div class="pull-right">
+						<span id="xhr_poll_status" style="display:none">
+							<span class="label success" id="xhr_poll_status_on"><%:Auto Refresh%> <%:on%></span>
+							<span class="label" id="xhr_poll_status_off" style="display:none"><%:Auto Refresh%> <%:off%></span>
+						</span>
+					</div>
+				</div>
+			</div>
+		</header>
+
+		<div id="maincontent" class="container">
+			<noscript>
+				<div class="alert-message warning">
+					<h4><%:JavaScript required!%></h4>
+					<p><%:Your browser has indicated that script(s) are being blocked.%></p>
+					<p><%:This page may have reduced functionality and may not function as designed.%></p>
+				</div>
+			</noscript>
+			<h2 name="content"><%:Status%></h2>
+			<div id="sections"></div>
+		</div>
+	</body>
+</html>

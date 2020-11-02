@@ -1,0 +1,28 @@
+Copycenter 2020 Serena's Copycat
+with additional code from MDN (https://developer.mozilla.org/) by MDN contributors
+License: CC0
+To the extent possible under law, the author has dedicated all copyright
+and related and neighboring rights to this software to the public domain
+worldwide.  This software is distributed without any warranty.
+Non-contributed portion of this software is published from: United States.
+See <http://creativecommons.org/publicdomain/zero/1.0/>.
+
+Feel free to mangle in any way, including inserting malicious code
+and removing information related to license and/or author,
+but then don't expect people to blame the author for undesired behavior though.
+Note that no warranties of any kind are made regardless,
+but you have the right to blame the author. XP  Scenarios include:
+  > Intefering with network activity
+     - by using up too much CPU on the router
+     - by overloading queues
+  > Exposing data to hackers, spies, journalists, enemies or other entities
+     - in fact, the whole purpose of this is to expose the metadata
+     - default uhttpd config without HTTPS
+        - all the data could be visible to anyone
+        - logged-in user requesting the data will land it in the network in plain text
+  > Costing time or money or other resources
+  > Accelerating climate change
+  > Causing device(s) to overheat / burst into flames
+  > Starting arguments or flame war(s)
+  > Destroying relationships
+  > Aiding someone in selling their soul to the devil

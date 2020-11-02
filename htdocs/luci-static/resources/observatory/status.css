@@ -1,0 +1,48 @@
+table.table tr.tr > td.td.data-number {
+	text-align: right;
+}
+
+.label.clickable, body.dark #maincontent .label.clickable {
+	/* Bootstrap theme makes white color important but not background color */
+	/* background-color: #444; */
+	color: #ccc;
+}
+.label.clickable {
+	cursor: pointer;
+}
+
+table.wan.hide-packet .col-packet {
+	width: 0px;
+	max-width: 0px;
+	padding-left: 0px;
+	padding-right: 0px;
+	margin-left: 0px;
+	margin-right: 0px;
+	overflow-x: hidden;
+	visibility: collapse;
+}
+table.wan:not(.show-packet):not(.hide-packet) .label.packet {
+	background-color: #2a2;
+}
+table.wan.show-packet .label.packet {
+	background-color: #2a2;
+}
+table.wan.doze .label.doze {
+	background-color: #e70;
+}
+table.wan.no-doze .label.doze {
+	opacity: 0.7;
+	cursor: not-allowed;
+}
+table.wan .live-indicator-inactive {
+	opacity: 0.5;
+}
+table.wan.show-fuzzy .label.fuzzy {
+	background-color: #2a2;
+}
+table.wan.hide-fuzzy tr.fuzzy {
+	visibility: collapse;
+}
+table.wan:not(.show-fuzzy):not(.hide-fuzzy) tr.fuzzy {
+	visibility: collapse;
+}
