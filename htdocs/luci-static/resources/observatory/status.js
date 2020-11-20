@@ -271,6 +271,7 @@ OBSERVATORY._common.js.dom.events.onLoad(function() {
 function buildMenu() {
 	var tags = OBSERVATORY._common.js.dom.tags;
 	var menu = OBSERVATORY._menu;
+	if (!(menu && menu.subroot)) { return; }
 	var path = [ menu.subroot, menu.name ];
 	if ("/" != menu.subroot[0]) {
 		path.unshift("");

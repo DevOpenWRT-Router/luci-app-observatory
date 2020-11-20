@@ -4,6 +4,8 @@
 
 Deploy by using information from [LuCI wiki on modules](https://github.com/openwrt/luci/wiki/Modules).
 
+On OpenWRT 14 and earlier, may have to delete `/tmp/luci-indexcache` for the changes to be picked up.
+
 ### TL;DR
 
 Copy
@@ -11,6 +13,8 @@ Copy
 `luasrc/` to `/usr/lib/lua/luci/`;
 `view/` to `/usr/lib/lua/luci/view/`;
 `htdocs/` to `/www/`.
+
+Delete `/tmp/luci-indexcache`.
 
 ## Creating package
 

@@ -38,7 +38,9 @@
 		<% if css then %>
 			<style title="text/css"><%= css %></style>
 		<% end -%>
-		<script src="<%=url('admin/translations', luci.i18n.context.lang)%>?v=git-20.029.45734-adbbd5c"></script>
+		<% if url then %>
+			<script src="<%=url('admin/translations', luci.i18n.context.lang)%>"></script>
+		<% end -%>
 		<script src="<%=resource%>/observatory/polyfill.js"></script>
 		<script src="<%=resource%>/observatory/ridr.js"></script>
 		<script src="<%=resource%>/observatory/dark.js"></script>
@@ -87,8 +89,12 @@
 		result.subroot = http.getenv("SCRIPT_NAME");
 		return result;
 	end
+	function getMenuDataAsJSON()
+		local isOK, jsonc = pcall(require, "luci.jsonc");
+		return isOK and jsonc.stringify(extractMenuData()) or 'null';
+	end
 %>	var _onsetup = (Array.isArray(OBSERVATORY._menu) && OBSERVATORY._menu) || [];
-	OBSERVATORY._menu = <%= require("luci.jsonc").stringify(extractMenuData()) %>;
+	OBSERVATORY._menu = <%= getMenuDataAsJSON() %>;
 	_onsetup.forEach(function (callbackItem) {
 		callbackItem();
 	});

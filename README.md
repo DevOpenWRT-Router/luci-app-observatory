@@ -10,16 +10,22 @@ A LuCI application that shows information about the OpenWRT router it's running 
 
 See [INSTALL](INSTALL.md).
 
+## Usage
+
+On a page within Admin, including the login screen, there should be a link at the bottom right that says "Observatory".  That will lead to the Dashboard.
+
+Alternatively, the URL would be like `http://router.example.com/cgi-bin/luci/observatory/`, replacing `http://router.example.com` with the protocol and domain normally used to access LuCI on the router.
+
 ## Design goals
 
 - working on as many systems and browsers as feasibly possible
    - bells and whistles may be broken on older browsers, but the train should still roll
    - no, not going to make this work on [Lynx](https://invisible-island.net/lynx/)
    - yes, it works on [IceCat](https://www.gnu.org/software/gnuzilla/) with [LibreJS](https://www.gnu.org/software/librejs/) enabled
-   - can be installed on OpenWRT 18 and 19
+   - can be installed on OpenWRT 14, 15, 18 and 19
 - accessible to anyone
    - no login required, thus no session timeouts
-      - note auto-refresh pages time out on OpenWRT 19 easier than on OpenWRT 18
+      - hibernated page (e.g. in Chromium) causes session expiration
    - **do not use** in potentially hostile environments
 - usable over long sessions
    - no session timeouts
@@ -44,5 +50,5 @@ Differences include:
    - intend to have it be functional on old versions of OpenWRT and LuCI
    - intend to have it be functional on old browsers
 
-That is not to say that, with enough support, there still won't be an attempt; just that it's rather unlikely at this point.
+That is not to say that all attempt would be precluded; just that it's rather unlikely at this point.
 
