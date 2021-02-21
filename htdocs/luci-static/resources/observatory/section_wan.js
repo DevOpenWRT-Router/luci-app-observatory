@@ -294,10 +294,12 @@ OBSERVATORY.WAN = new (function () {
 			_isLiveMark = false;
 		};
 		this.updateWith = function (data) {
-			_updaters.forEach(function (updater) {
-					updater(data);
-				});
-			_isLiveMark = true;
+			if (data.statistics) {
+				_updaters.forEach(function (updater) {
+						updater(data);
+					});
+				_isLiveMark = true;
+			}
 		};
 		function updateLiveIndicatorOnRow(row) {
 			OBSERVATORY._common.js.dom.styles.toggleClass(row, "live-indicator-active", "live-indicator-inactive", _isLiveMark);
@@ -614,12 +616,20 @@ this.updateDisplay = function () {
 			5000, 0);
 	};
 	var _interfaceData = {};
+	this.beginUpdateInterfaces = function () {
+		for (var i in _interfaceData) {
+			var baseData = _interfaceData[i];
+			if (baseData.statistics) {
+				baseData.statistics.isOld = true;
+			}
+		}
+	};
 	this.updateInterface = function (data) {
 		var interfaceName = data.name;
 		var baseData = _interfaceData[interfaceName];
 		if (!baseData) {
 			baseData = _interfaceData[interfaceName] = {};
-		} else {
+		} else if (baseData.statistics) {
 			(function (change) {
 				for (var k in data.statistics) {
 					change[k] = data.statistics[k] - baseData.statistics[k];
@@ -628,13 +638,24 @@ this.updateDisplay = function () {
 		}
 		baseData.statistics = data.statistics;
 	};
+	this.finalizeUpdateInterfaces = function () {
+		for (var i in _interfaceData) {
+			var baseData = _interfaceData[i];
+			if (baseData.statistics && baseData.statistics.isOld) {
+				baseData.statistics = null;
+				baseData.change = null;
+			}
+		}
+	};
 	this.updateFromXHR = function(xhr) {
 		if ((200 == xhr.status) && ("application/json" == xhr.getResponseHeader("Content-Type"))) {
 			try {
 				var json = JSON.parse(xhr.responseText);
+				_wan.beginUpdateInterfaces();
 				json.forEach(function (interface) {
 					_wan.updateInterface(interface);
 				});
+				_wan.finalizeUpdateInterfaces();
 			} catch (e) {};
 			if (RIDR.schedule.isRunning()) {
 				_wan.updateDisplay();
