@@ -22,16 +22,24 @@ function index()
 end
 
 function status_data_wan()
+	local nixio = require("nixio");
 	local net = require("invalid.copycat.luci.net");
 	local interfaces = net.get_wan_interfaces();
-	local result = {};
+	local result, devs = { { type = 'sys'; up = nixio.sysinfo().uptime } }, {};
 	for _, interface in ipairs(net.get_wan_interfaces()) do
-		local data = {
-			name = interface.name;
-			statistics = net.get_device_statistics(interface.dev);
-		};
-		data.statistics.up = interface.up;
-		table.insert(result, data);
+		local devName = interface.dev;
+		local data = devs[devName];
+		if nil ~= data then
+			data.up[interface.name] = interface.up;
+		else
+			data = {
+				type = 'dev';
+				statistics = net.get_device_statistics(interface.dev);
+				up = { [interface.name] = interface.up };
+			};
+			devs[devName] = data;
+			table.insert(result, data);
+		end
 	end
 	luci.http.prepare_content("application/json");
 	luci.http.write_json(result);

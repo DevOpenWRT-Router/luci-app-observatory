@@ -43,14 +43,19 @@ function get_wan_interfaces()
 	local interfaces = module_local.ubus.call("network.interface", "dump", {}).interface;
 	for _, interface in module_global.ipairs(interfaces) do
 		if interface.l3_device then
+			local hasDefaultRoute = false;
 			for _, rt in module_global.ipairs(interface.route) do
 				if '0.0.0.0' == rt.target and 0 == rt.mask then
+					hasDefaultRoute = true;
+					break;
+				end
+			end
+			if hasDefaultRoute then
 					module_global.table.insert(result, {
 							name = interface.interface;
 							dev = interface.l3_device;
-							up = interface.uptime;
+							up = interface.up and interface.uptime;
 						});
-				end
 			end
         	end
 	end

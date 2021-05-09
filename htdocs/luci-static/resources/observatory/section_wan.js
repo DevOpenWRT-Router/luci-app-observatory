@@ -276,16 +276,22 @@ OBSERVATORY.WAN = new (function () {
 		var _updaters = [];
 		var _dataRows = [];
 		var _isLiveOnUI, _isLiveMark;
-		this.getUpdaterEditor = function (retriever) {
+		function _asUpdaterEditor(updater) {
 			return function (el) {
 				_updaters.push(function (data) {
-					while (el.firstChild) { el.removeChild(el.lastChild); }
-					var newData = retriever(data);
-					if (newData) {
-						el.appendChild(document.createTextNode(newData));
-					}
+					updater(data, el);
 				});
 			};
+		};
+		this.getUpdaterEditor = _asUpdaterEditor;
+		this.getReplacerEditor = function (retriever) {
+			return _asUpdaterEditor(function (data, el) {
+				while (el.firstChild) { el.removeChild(el.lastChild); }
+				var newData = retriever(data);
+				if (newData) {
+					el.appendChild(newData instanceof Node ? newData : document.createTextNode(newData));
+				}
+			});
 		};
 		this.liveIndicatorEditor = function (el) {
 			_dataRows.push(el);
@@ -443,13 +449,8 @@ OBSERVATORY.WAN = new (function () {
 		_fnFormatUpLow = function (num) { return toDecimalLocaleString(num); };
 		_fnFormatUpSec = function (num) { return toIntLocaleString(num) + "s"; };
 	}
-	function _formatByteRange(changeBytes, changeTime) {
-		return _fnFormatByteAsKilobitPerSecInt(changeBytes, changeTime + 1, Math.floor) + " - " +
-			(changeTime <= 1 ? "?" : _fnFormatByteAsKilobitPerSecInt(changeBytes, changeTime - 1, Math.ceil));
-	}
-	var _dataRetrievers = {
-		upTotal: function (data) {
-		var up = data.statistics.up, lowerUp, nextUp;
+	function _formatUptime(up) {
+		var lowerUp, nextUp;
 		function bumpNumbers() {
 			lowerUp = up;
 			up = nextUp;
@@ -468,140 +469,204 @@ OBSERVATORY.WAN = new (function () {
 			: bumpNumbers() && checkNotUseNextUnit(60) ? formatUnits("m", 60, "s")
 			: bumpNumbers() && checkNotUseNextUnit(24) ? formatUnits("h", 60, "m")
 			: bumpNumbers() && formatUnits("d", 24, "h");
-	},
-	txPktTotal: function (data) {
-		return _showPacket && _fnFormatPacket(data.statistics.tx_packets);
-	},
-	txBytTotal: function (data) {
-		return _fnFormatByte(data.statistics.tx_bytes);
-	},
-	rxPktTotal: function (data) {
-		return _showPacket && _fnFormatPacket(data.statistics.rx_packets);
-	},
-	rxBytTotal: function (data) {
-		return _fnFormatByte(data.statistics.rx_bytes);
-	},
-	upChange: function (data) {
-		return data.change && _fnFormatUpSec(data.change.up);
-	},
-	txPktChange: function (data) {
-		return _showPacket && data.change && _fnFormatPacket(data.change.tx_packets);
-	},
-	txBytChange: function (data) {
-		return data.change && _fnFormatByte(data.change.tx_bytes);
-	},
-	rxPktChange: function (data) {
-		return _showPacket && data.change && _fnFormatPacket(data.change.rx_packets);
-	},
-	rxBytChange: function (data) {
-		return data.change && _fnFormatByte(data.change.rx_bytes);
-	},
-	txPktRate: function (data) {
-		return _showPacket && data.change && _fnFormatPacketPerSec(data.change.tx_packets, data.change.up);
-	},
-	txBytRate: function (data) {
-		return data.change && _fnFormatByteAsKilobitPerSec(data.change.tx_bytes, data.change.up);
-	},
-	rxPktRate: function (data) {
-		return _showPacket && data.change && _fnFormatPacketPerSec(data.change.rx_packets, data.change.up);
-	},
-	rxBytRate: function (data) {
-		return data.change && _fnFormatByteAsKilobitPerSec(data.change.rx_bytes, data.change.up);
-	},
-	txBytRange: function (data) {
-		return _showFuzzy && data.change && _formatByteRange(data.change.tx_bytes, data.change.up);
-	},
-	rxBytRange: function (data) {
-		return _showFuzzy && data.change && _formatByteRange(data.change.rx_bytes, data.change.up);
 	}
-};
-this.updateDisplay = function () {
-	for (var i in _interfaceUpdaters) {
-		_interfaceUpdaters[i].reviseLiveIndicator();
+	function _formatByteRange(changeBytes, changeTime) {
+		return _fnFormatByteAsKilobitPerSecInt(changeBytes, changeTime + 1, Math.floor) + " - " +
+			(changeTime <= 1 ? "?" : _fnFormatByteAsKilobitPerSecInt(changeBytes, changeTime - 1, Math.ceil));
 	}
-	for (var i in _interfaceData) {
-		var data = _interfaceData[i];
-		var updater = _interfaceUpdaters[i];
-		if (!updater) {
-			updater = _interfaceUpdaters[i] = new InterfaceUpdater();
+	var _dataRetrievers = {
+		ifName: function(data, el) {
 			var ed = _tags.editor;
-			_wanTable.appendChild(_tags.create("tbody",
-				updater.liveIndicatorEditor,
-				ed.create("tr",
-					ed.attr("className", "tr"),
-					ed.create("td",
-						ed.attr("className", "td"), ed.attr("rowSpan", 4),
-						ed.text(i)),
-					ed.create("td",
-						ed.attr("className", "td col-packet data-number"),
-						updater.getUpdaterEditor(_dataRetrievers.txPktTotal)),
-					ed.create("td",
-						ed.attr("className", "td col-byte data-number"),
-						updater.getUpdaterEditor(_dataRetrievers.txBytTotal)),
-					ed.create("td",
-						ed.attr("className", "td col-packet data-number"),
-						updater.getUpdaterEditor(_dataRetrievers.rxPktTotal)),
-					ed.create("td",
-						ed.attr("className", "td col-byte data-number"),
-						updater.getUpdaterEditor(_dataRetrievers.rxBytTotal)),
-					ed.create("th",
-						ed.attr("className", "th"), ed.attr("scope", "row"),
-						ed.create("span",
-							updater.getUpdaterEditor(_dataRetrievers.upTotal)),
-						ed.text(" "),
-						ed.text(OBSERVATORY._config.i18n.WAN_TOTAL))),
-				ed.create("tr",
-					ed.attr("className", "tr"),
-					ed.create("td",
-						ed.attr("className", "td col-packet data-number"),
-						updater.getUpdaterEditor(_dataRetrievers.txPktChange)),
-					ed.create("td",
-						ed.attr("className", "td col-byte data-number"),
-						updater.getUpdaterEditor(_dataRetrievers.txBytChange)),
-					ed.create("td",
-						ed.attr("className", "td col-packet data-number"),
-						updater.getUpdaterEditor(_dataRetrievers.rxPktChange)),
-					ed.create("td",
-						ed.attr("className", "td col-byte data-number"),
-						updater.getUpdaterEditor(_dataRetrievers.rxBytChange)),
-					ed.create("th",
-						ed.attr("className", "th"), ed.attr("scope", "row"),
-						ed.create("span",
-							updater.getUpdaterEditor(_dataRetrievers.upChange)),
-						ed.text(" "),
-						ed.text(OBSERVATORY._config.i18n.WAN_CHANGE))),
-				ed.create("tr",
-					ed.attr("className", "tr"),
-					ed.create("td",
-						ed.attr("className", "td col-packet data-number"),
-						updater.getUpdaterEditor(_dataRetrievers.txPktRate)),
-					ed.create("td",
-						ed.attr("className", "td col-byte data-number"),
-						updater.getUpdaterEditor(_dataRetrievers.txBytRate)),
-					ed.create("td",
-						ed.attr("className", "td col-packet data-number"),
-						updater.getUpdaterEditor(_dataRetrievers.rxPktRate)),
-					ed.create("td",
-						ed.attr("className", "td col-byte data-number"),
-						updater.getUpdaterEditor(_dataRetrievers.rxBytRate)),
-					ed.create("th",
-						ed.attr("className", "th"), ed.attr("scope", "row"),
-						ed.text(OBSERVATORY._config.i18n.WAN_RATE),
-						ed.text(" (kbit/s)"))),
-				ed.create("tr",
-					ed.attr("className", "tr fuzzy"),
-					ed.create("td",
-						ed.attr("className", "td data-number"), ed.attr("colSpan", 2),
-						updater.getUpdaterEditor(_dataRetrievers.txBytRange)),
-					ed.create("td",
-						ed.attr("className", "td data-number"), ed.attr("colSpan", 2),
-						updater.getUpdaterEditor(_dataRetrievers.rxBytRange)),
-					ed.create("th",
-						ed.attr("className", "th"), ed.attr("scope", "row"),
-						ed.text(OBSERVATORY._config.i18n.WAN_RANGE),
-						ed.text(" (kbit/s)")))));
+			var toggleClass = OBSERVATORY._common.js.dom.styles.toggleClass;
+			var ifSpans = el.getElementsByTagName("span");
+			var namesToAdd = {};
+			for (var n in data.up) {
+				namesToAdd[n] = true;
 			}
-			updater.updateWith(data);
+			for (var s = ifSpans.length - 1; s >= 0; --s) {
+				var ifSpan = ifSpans[s];
+				var ifName = ifSpan.innerText;
+				toggleClass(ifSpan, "live-indicator-active", "live-indicator-inactive", ifName in data.up);
+				delete namesToAdd[ifName];
+			}
+			var separator = ifSpans.length > 0 && ", ";
+			for (var n in namesToAdd) {
+				separator && el.appendChild(document.createTextNode(separator));
+				el.appendChild(_tags.create("span",
+					ed.attr("className", "live-indicator-active"),
+					ed.text(n)));
+				separator = ", ";
+			}
+		},
+		upTotal: function (data) {
+			var upMax, upMin;
+			for (var n in data.up) {
+				var up = data.up[n];
+				if (null == upMax) {
+					upMax = up;
+				} else if (up == upMax) {
+					// do nothing
+				} else if (up > upMax) {
+					if (null == upMin) {
+						upMin = upMax;
+					}
+					upMax = up;
+				} else if (null == upMin || up < upMin) {
+					upMin = up;
+				}
+			}
+			return null == upMax ? "X" :
+				null == upMin ? _formatUptime(upMax) :
+				_formatUptime(upMin) + " - " + _formatUptime(upMax);
+		},
+		txPktTotal: function (data) {
+			return _showPacket && _fnFormatPacket(data.statistics.tx_packets);
+		},
+		txBytTotal: function (data) {
+			return _fnFormatByte(data.statistics.tx_bytes);
+		},
+		rxPktTotal: function (data) {
+			return _showPacket && _fnFormatPacket(data.statistics.rx_packets);
+		},
+		rxBytTotal: function (data) {
+			return _fnFormatByte(data.statistics.rx_bytes);
+		},
+		upChange: function (data) {
+			return data.change && _fnFormatUpSec(data.change.up || _uptimeChange);
+		},
+		txPktChange: function (data) {
+			return _showPacket && data.change && _fnFormatPacket(data.change.tx_packets);
+		},
+		txBytChange: function (data) {
+			return data.change && _fnFormatByte(data.change.tx_bytes);
+		},
+		rxPktChange: function (data) {
+			return _showPacket && data.change && _fnFormatPacket(data.change.rx_packets);
+		},
+		rxBytChange: function (data) {
+			return data.change && _fnFormatByte(data.change.rx_bytes);
+		},
+		txPktRate: function (data) {
+			return _showPacket && data.change && _fnFormatPacketPerSec(data.change.tx_packets, data.change.up || _uptimeChange);
+		},
+		txBytRate: function (data) {
+			return data.change && _fnFormatByteAsKilobitPerSec(data.change.tx_bytes, data.change.up || _uptimeChange);
+		},
+		rxPktRate: function (data) {
+			return _showPacket && data.change && _fnFormatPacketPerSec(data.change.rx_packets, data.change.up || _uptimeChange);
+		},
+		rxBytRate: function (data) {
+			return data.change && _fnFormatByteAsKilobitPerSec(data.change.rx_bytes, data.change.up || _uptimeChange);
+		},
+		txBytRange: function (data) {
+			return _showFuzzy && data.change && _formatByteRange(data.change.tx_bytes, data.change.up || _uptimeChange);
+		},
+		rxBytRange: function (data) {
+			return _showFuzzy && data.change && _formatByteRange(data.change.rx_bytes, data.change.up || _uptimeChange);
+		}
+	};
+	function _createInterfaceSegment(updater) {
+		var ed = _tags.editor;
+		_wanTable.appendChild(_tags.create("tbody",
+			updater.liveIndicatorEditor,
+			ed.create("tr",
+				ed.attr("className", "tr"),
+				ed.create("td",
+					ed.attr("className", "td"), ed.attr("rowSpan", 4),
+					updater.getUpdaterEditor(_dataRetrievers.ifName)),
+				ed.create("td",
+					ed.attr("className", "td col-packet data-number"),
+					updater.getReplacerEditor(_dataRetrievers.txPktTotal)),
+				ed.create("td",
+					ed.attr("className", "td col-byte data-number"),
+					updater.getReplacerEditor(_dataRetrievers.txBytTotal)),
+				ed.create("td",
+					ed.attr("className", "td col-packet data-number"),
+					updater.getReplacerEditor(_dataRetrievers.rxPktTotal)),
+				ed.create("td",
+					ed.attr("className", "td col-byte data-number"),
+					updater.getReplacerEditor(_dataRetrievers.rxBytTotal)),
+				ed.create("th",
+					ed.attr("className", "th"), ed.attr("scope", "row"),
+					ed.create("span",
+						updater.getReplacerEditor(_dataRetrievers.upTotal)),
+					ed.text(" "),
+					ed.text(OBSERVATORY._config.i18n.WAN_TOTAL))),
+			ed.create("tr",
+				ed.attr("className", "tr"),
+				ed.create("td",
+					ed.attr("className", "td col-packet data-number"),
+					updater.getReplacerEditor(_dataRetrievers.txPktChange)),
+				ed.create("td",
+					ed.attr("className", "td col-byte data-number"),
+					updater.getReplacerEditor(_dataRetrievers.txBytChange)),
+				ed.create("td",
+					ed.attr("className", "td col-packet data-number"),
+					updater.getReplacerEditor(_dataRetrievers.rxPktChange)),
+				ed.create("td",
+					ed.attr("className", "td col-byte data-number"),
+					updater.getReplacerEditor(_dataRetrievers.rxBytChange)),
+				ed.create("th",
+					ed.attr("className", "th"), ed.attr("scope", "row"),
+					ed.create("span",
+						updater.getReplacerEditor(_dataRetrievers.upChange)),
+					ed.text(" "),
+					ed.text(OBSERVATORY._config.i18n.WAN_CHANGE))),
+			ed.create("tr",
+				ed.attr("className", "tr"),
+				ed.create("td",
+					ed.attr("className", "td col-packet data-number"),
+					updater.getReplacerEditor(_dataRetrievers.txPktRate)),
+				ed.create("td",
+					ed.attr("className", "td col-byte data-number"),
+					updater.getReplacerEditor(_dataRetrievers.txBytRate)),
+				ed.create("td",
+					ed.attr("className", "td col-packet data-number"),
+					updater.getReplacerEditor(_dataRetrievers.rxPktRate)),
+				ed.create("td",
+					ed.attr("className", "td col-byte data-number"),
+					updater.getReplacerEditor(_dataRetrievers.rxBytRate)),
+				ed.create("th",
+					ed.attr("className", "th"), ed.attr("scope", "row"),
+					ed.text(OBSERVATORY._config.i18n.WAN_RATE),
+					ed.text(" (kbit/s)"))),
+			ed.create("tr",
+				ed.attr("className", "tr fuzzy"),
+				ed.create("td",
+					ed.attr("className", "td data-number"), ed.attr("colSpan", 2),
+					updater.getReplacerEditor(_dataRetrievers.txBytRange)),
+				ed.create("td",
+					ed.attr("className", "td data-number"), ed.attr("colSpan", 2),
+					updater.getReplacerEditor(_dataRetrievers.rxBytRange)),
+				ed.create("th",
+					ed.attr("className", "th"), ed.attr("scope", "row"),
+					ed.text(OBSERVATORY._config.i18n.WAN_RANGE),
+					ed.text(" (kbit/s)")))));
+		return updater;
+	}
+	this.updateDisplay = function () {
+		for (var i in _interfaceUpdaters) {
+			_interfaceUpdaters[i].reviseLiveIndicator();
+		}
+		var updatedInterfaces = {};
+		for (var i in _interfaceData) {
+			if (!updatedInterfaces[i]) {
+				var data = _interfaceData[i];
+				var updater = _interfaceUpdaters[i];
+				// use any one from up interfaces, but might not be available if they were all down previously
+				for (var n in data.up) {
+					updater = _interfaceUpdaters[n];
+					if (updater) { break; }
+				}
+				if (!updater) {
+					_createInterfaceSegment(updater = new InterfaceUpdater());
+				}
+				updater.updateWith(data);
+				for (var n in data.up) {
+					_interfaceUpdaters[n] = updater;
+					updatedInterfaces[n] = true;
+				}
+			}
 		}
 		for (var i in _interfaceUpdaters) {
 			_interfaceUpdaters[i].finalizeLiveIndicator();
@@ -618,34 +683,63 @@ this.updateDisplay = function () {
 	var _interfaceData = {};
 	this.beginUpdateInterfaces = function () {
 		for (var i in _interfaceData) {
-			var baseData = _interfaceData[i];
-			if (baseData.statistics) {
-				baseData.statistics.isOld = true;
-			}
+			var baseStats = _interfaceData[i].statistics;
+			if (baseStats) { baseStats.isOld = true; }
 		}
 	};
-	this.updateInterface = function (data) {
-		var interfaceName = data.name;
-		var baseData = _interfaceData[interfaceName];
-		if (!baseData) {
-			baseData = _interfaceData[interfaceName] = {};
-		} else if (baseData.statistics) {
+	function updateInterfaceStatChanges(data, baseData) {
+		if (baseData.statistics) {
+			var change = baseData.change || (baseData.change = {});
 			(function (change) {
 				for (var k in data.statistics) {
 					change[k] = data.statistics[k] - baseData.statistics[k];
 				}
-			})(baseData.change || (baseData.change = {}));
+			})(change);
 		}
+		if (baseData.up) {
+			var correspondingInterfaces = 0, correspondingInterfaceUp = 0;
+			for (var n in data.up) {
+				var baseUp = baseData.up[n];
+				if (baseUp) {
+					++correspondingInterfaces;
+					correspondingInterfaceUp += data.up[n] - baseUp;
+				}
+			}
+			change.up = correspondingInterfaceUp / correspondingInterfaces;
+		}
+	}
+	this.updateInterface = function (data) {
+		var baseData;
+		var interfaceChange = {};
+		for (var n in data.up) {
+			baseData = _interfaceData[n];
+			if (baseData) { break; }
+		}
+		if (baseData) {
+			updateInterfaceStatChanges(data, baseData);
+		} else {
+			baseData = { names: {} };
+		}
+		for (var n in data.up) {
+			_interfaceData[n] = baseData;
+		}
+		baseData.up = data.up;
 		baseData.statistics = data.statistics;
 	};
 	this.finalizeUpdateInterfaces = function () {
 		for (var i in _interfaceData) {
 			var baseData = _interfaceData[i];
 			if (baseData.statistics && baseData.statistics.isOld) {
+				baseData.up = null;
 				baseData.statistics = null;
 				baseData.change = null;
 			}
 		}
+	};
+	var _uptime, _uptimeChange;
+	this.setUptime = function (up) {
+		_uptimeChange = up - _uptime;
+		_uptime = up;
 	};
 	this.updateFromXHR = function(xhr) {
 		if ((200 == xhr.status) && ("application/json" == xhr.getResponseHeader("Content-Type"))) {
@@ -653,7 +747,11 @@ this.updateDisplay = function () {
 				var json = JSON.parse(xhr.responseText);
 				_wan.beginUpdateInterfaces();
 				json.forEach(function (interface) {
-					_wan.updateInterface(interface);
+					if ("dev" == interface.type) {
+						_wan.updateInterface(interface);
+					} else if ("sys" == interface.type) {
+						_wan.setUptime(interface.up);
+					}
 				});
 				_wan.finalizeUpdateInterfaces();
 			} catch (e) {};
